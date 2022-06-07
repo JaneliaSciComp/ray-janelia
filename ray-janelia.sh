@@ -8,14 +8,14 @@
 # -c : user command to run on the cluster (if not specified, the cluster will be left running)
 # -n : name of conda environment to use for running ray and user workload
 # -m : size of shared object store (bytes). defaults to 4GB if not specified
-# 
+#
 # Example usage:
 #
 # bsub -o std%J.out -e std%J.out -n 20 -R "span[ptile=4]" bash -i $PWD/ray-janelia.sh \
 #   -c "python /path/to/job.py --option" -n "ray-python" -m 20000000000
 #
-# This will allocate 20 slots on the cluster, divide them into 20/4=5 nodes, and run the validate_ray.py 
-# python script using the neuronbridge-python conda environment.
+# This will allocate 20 slots on the cluster, divide them into 20/4=5 nodes, and run the job.py
+# python script using the ray-python conda environment.
 #
 
 # location of conda executable to use
@@ -28,23 +28,23 @@ TIMEOUT_SEC=180
 SLEEP_DELAY_SEC=1
 
 # Shut down the cluster by killing the job id
-function shutdown_cluster() 
-{        
+function shutdown_cluster()
+{
     echo "Shutting down the cluster"
     bkill $LSB_JOBID
 }
 
 # Wait for the cluster at address $1 to have $2 nodes available, with timeout.
-function wait_for_nodes() 
+function wait_for_nodes()
 {
     local _address=$1
     local _num_nodes=$2
     start_time="$(date -u +%s)"
     status_cmd="ray status --address $_address"
     echo "Waiting for $_num_nodes nodes to be ready on cluster $_address"
-    
+
     while true; do
-    
+
         # from https://stackoverflow.com/questions/12321469/retry-a-bash-command-with-timeout
         current_time="$(date -u +%s)"
         elapsed_seconds=$(($current_time-$start_time))
@@ -56,18 +56,18 @@ function wait_for_nodes()
 
         STATUS_OUTPUT=$($status_cmd)
         STATUS_RC=$?
-        
+
         if [ $STATUS_RC -ne 0 ]; then
             echo "Cluster status command failed with exit code $STATUS_RC"
             shutdown_cluster
             exit 1
         fi
-        
+
         num_ready=$(echo "$STATUS_OUTPUT" | awk '/Healthy:/{ f = 1; next } /Pending:/{ f = 0 } f' | wc -l)
         if [ $_num_nodes -eq $num_ready ]; then
             echo "Cluster is ready with $num_ready nodes"
             return 0
-        else 
+        else
             echo "$num_ready cluster nodes are ready (waiting for $_num_nodes)"
         fi
 
@@ -141,13 +141,13 @@ do
 done
 echo
 
-num_gpu=0
 if [ -z "$CUDA_VISIBLE_DEVICES" ]
 then
-    num_gpu=0
+    num_gpu_for_head=0
 else
-    num_gpu=$CUDA_VISIBLE_DEVICES
+    num_gpu_for_head=$(echo $CUDA_VISIBLE_DEVICES | awk -F "," "{print NF}")
 fi
+num_gpu_for_worker=0
 
 export head_node=${hosts[0]}
 cluster_address="$head_node:$port"
@@ -163,7 +163,7 @@ fi
 echo "  The object store memory: $object_store_mem bytes"
 
 num_cpu_for_head=${cpus_for_node[$head_node]}
-command_launch="blaunch -z $head_node ray start --head --port $port --dashboard-host 0.0.0.0 --dashboard-port $dashboard_port --min-worker-port 18999 --max-worker-port 19999 --num-cpus $num_cpu_for_head --num-gpus $num_gpu --object-store-memory $object_store_mem"
+command_launch="blaunch -z $head_node ray start --head --port $port --dashboard-host 0.0.0.0 --dashboard-port $dashboard_port --min-worker-port 18999 --max-worker-port 19999 --num-cpus $num_cpu_for_head --num-gpus $num_gpu_for_head --object-store-memory $object_store_mem"
 echo $command_launch
 $command_launch &
 
@@ -180,7 +180,7 @@ for host in "${workers[@]}"
 do
     echo "Starting worker on $host using master node $head_node"
     num_cpu=${cpus_for_node[$host]}
-    command_for_worker="blaunch -z $host ray start --address $cluster_address --num-cpus $num_cpu --num-gpus $num_gpu --object-store-memory $object_store_mem"
+    command_for_worker="blaunch -z $host ray start --address $cluster_address --num-cpus $num_cpu --num-gpus $num_gpu_for_worker --object-store-memory $object_store_mem"
     echo $command_for_worker
     $command_for_worker &
 done
@@ -206,6 +206,6 @@ if [ -n "$user_command" ]; then
         shutdown_cluster
     fi
 
-else 
+else
     echo "Ray custer with $num_nodes nodes is now running at ray://$cluster_address"
 fi
