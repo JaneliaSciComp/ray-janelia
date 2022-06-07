@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# ./ray-launch.sh -n 20 -e ray-python "python /path/to/job.py --option"
+# ./ray-launch.sh -n 20 -e ray-python -p "/path/to/job.py --options"
 #
 DIR=$(cd "$(dirname "$0")"; pwd)
 
@@ -55,9 +55,8 @@ fi
 
 command_str=""
 if [ -n "$python_command" ]; then
-    command_str="-c \"python $python_command\""
-fi 
+    command_str="-c python $python_command"
+fi
 
 bsub -o std%J.out -e std%J.out -n $slots -R "span[ptile=$ptile]" $bsub_opts \
-    bash -i $DIR/ray-janelia.sh -n $conda_env -m $object_store_mem $command_str
-
+    bash -i $DIR/ray-janelia.sh -n $conda_env -m $object_store_mem "$command_str"
