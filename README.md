@@ -1,6 +1,6 @@
 # ray-janelia
 
-These scripts let you run Ray on the Janelia cluster (and maybe other LSF clusters).
+These scripts let you run [Ray](https://github.com/ray-project/ray) on the Janelia cluster (and maybe other LSF clusters).
 
 You must have a Conda environment with [Ray installed](https://docs.ray.io/en/latest/ray-overview/installation.html).
 
@@ -10,11 +10,16 @@ You must have a Conda environment with [Ray installed](https://docs.ray.io/en/la
 This command will start a 20 slot cluster, using a conda environment called `ray-python`:
 
 ```bash
-ray-janelia/ray-launch.sh -n 20 -e ray-python"
+ray-janelia/ray-launch.sh -n 20 -e ray-python
 ```
 
 By default, the cluster will be divided into nodes of 4 slots each. To use a different tiling, specify the number of nodes you want with `-d <nodes>`.
 
+This command will start a cluster with 20 CPU and 2 GPU slots on a GPU enabled queue `gpu_queue`:
+
+```bash
+ray-janelia/ray-launch.sh -n 20 -e ray-python -b "-q gpu_queue -gpu num=2"
+```
 
 ## Run a job on a cluster
 
@@ -24,6 +29,7 @@ The output of launching the cluster above will print a remote address like `ray:
 ray.init("ray://head_node:10001")
 ```
 
+The output will also print the address of the [Ray dashboard](https://docs.ray.io/en/latest/ray-core/ray-dashboard.html) for the launched Ray cluster.
 
 ## Create a cluster, run a job, then shut it down
 
