@@ -2,7 +2,7 @@
 
 Example usage:
 
-./ray-launch.sh -n 20 -e ray-python -p "example_job.py --num_tasks 50"
+./ray-launch.sh -n 20 -e ray-python -o test.out -p "example_job.py --num_tasks 50"
 
 This will allocate 20 slots on the cluster, divide them (by default) into 20/4=5
 nodes, and run this python script using the ray-python conda environment.

@@ -4,7 +4,7 @@
 #
 DIR=$(cd "$(dirname "$0")"; pwd)
 
-while getopts "n:e:d::m::p::b::h" option;do
+while getopts "n:e:d::m::o::p::b::h" option;do
     case "${option}" in
     n) n=${OPTARG}
         slots=$n
@@ -18,13 +18,16 @@ while getopts "n:e:d::m::p::b::h" option;do
     m) m=${OPTARG}
         object_store_mem=$m
     ;;
+    o) o=${OPTARG}
+        output_file=$o
+    ;;
     p) p=${OPTARG}
         python_command=$p
     ;;
     b) b=${OPTARG}
         bsub_opts=$b
     ;;
-    h) echo "Usage: $0 -n slots -e conda-env-name [-d num-nodes] [-m object-store-bytes] [-p python-command] [-b bsub-options]"
+    h) echo "Usage: $0 -n slots -e conda-env-name [-d num-nodes] [-m object-store-bytes] [-o output-file] [-p python-command] [-b bsub-options]"
         exit 1
     ;;
     esac
@@ -53,10 +56,14 @@ if [ -z "$object_store_mem" ]; then
     object_store_mem=4000000000
 fi
 
+if [ -z "$output_file" ]; then
+    output_file="std%J.out"
+fi
+
 command_str=""
 if [ -n "$python_command" ]; then
     command_str="-c python $python_command"
 fi
 
-bsub -o std%J.out -e std%J.out -n $slots -R "span[ptile=$ptile]" $bsub_opts \
+bsub -o $output_file -e $output_file -n $slots -R "span[ptile=$ptile]" $bsub_opts \
     bash -i $DIR/ray-janelia.sh -n $conda_env -m $object_store_mem "$command_str"
