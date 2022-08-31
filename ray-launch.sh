@@ -1,5 +1,9 @@
 #!/bin/bash
 #
+# Script to simplify submission of ray-janelia.sh to the cluster.
+#
+# Usage example:
+#
 # ./ray-launch.sh -n 20 -e ray-python -p "/path/to/job.py --options"
 #
 DIR=$(cd "$(dirname "$0")"; pwd)
