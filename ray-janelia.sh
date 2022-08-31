@@ -151,6 +151,7 @@ num_gpu_for_worker=0
 
 export head_node=${hosts[0]}
 cluster_address="$head_node:$port"
+client_server_port=10001
 
 echo "Starting Ray head node on $head_node"
 
@@ -163,7 +164,7 @@ fi
 echo "  The object store memory: $object_store_mem bytes"
 
 num_cpu_for_head=${cpus_for_node[$head_node]}
-command_launch="blaunch -z $head_node ray start --head --port $port --dashboard-host 0.0.0.0 --dashboard-port $dashboard_port --min-worker-port 18999 --max-worker-port 19999 --num-cpus $num_cpu_for_head --num-gpus $num_gpu_for_head --object-store-memory $object_store_mem"
+command_launch="blaunch -z $head_node ray start --head --port $port --ray-client-server-port $client_server_port --dashboard-host 0.0.0.0 --dashboard-port $dashboard_port --min-worker-port 18999 --max-worker-port 19999 --num-cpus $num_cpu_for_head --num-gpus $num_gpu_for_head --object-store-memory $object_store_mem"
 echo $command_launch
 $command_launch &
 
@@ -207,5 +208,5 @@ if [ -n "$user_command" ]; then
     fi
 
 else
-    echo "Ray custer with $num_nodes nodes is now running at ray://$cluster_address"
+    echo "Ray cluster with $num_nodes nodes is now running at ray://$head_node:$client_server_port with a dashboard at http://$head_node:$dashboard_port/"
 fi
