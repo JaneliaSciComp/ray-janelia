@@ -54,16 +54,16 @@ function wait_for_nodes()
             exit 1
         fi
 
-        STATUS_OUTPUT=$($status_cmd)
+        STATUS_OUTPUT=$($status_cmd 2>&1)
         STATUS_RC=$?
 
         if [ $STATUS_RC -ne 0 ]; then
-            echo "Cluster status command failed with exit code $STATUS_RC"
-            shutdown_cluster
-            exit 1
+            echo "Waiting for cluster to become available..."
+            sleep $SLEEP_DELAY_SEC
+            continue
         fi
 
-        num_ready=$(echo "$STATUS_OUTPUT" | awk '/Healthy:/{ f = 1; next } /Pending:/{ f = 0 } f' | wc -l)
+        num_ready=$(echo "$STATUS_OUTPUT" | awk '/Healthy:|Active:/{ f = 1; next } /Pending:/{ f = 0 } f' | wc -l)
         if [ $_num_nodes -eq $num_ready ]; then
             echo "Cluster is ready with $num_ready nodes"
             return 0
@@ -111,6 +111,7 @@ else
     eval "$($CONDA shell.bash hook)"
     conda activate $conda_env
     echo "Activated conda environment: $conda_env"
+    export PYTHONNOUSERSITE=1
 fi
 
 hosts=()
@@ -126,6 +127,8 @@ echo "Head node will use port: " $port
 export port
 dashboard_port=$(get_free_port)
 echo "Dashboard will use port: " $dashboard_port
+client_server_port=$(get_free_port)
+echo "Client server will use port: " $client_server_port
 echo
 
 IFS=' ' read -r -a array <<< "$LSB_MCPU_HOSTS"
@@ -151,7 +154,6 @@ num_gpu_for_worker=0
 
 export head_node=${hosts[0]}
 cluster_address="$head_node:$port"
-client_server_port=10001
 
 echo "Starting Ray head node on $head_node"
 
